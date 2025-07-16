@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QTabWidget, QListWidget, QHBoxLayout, QCheckBox, QLabel, QComboBox
 from plotly.subplots import make_subplots
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMessageBox
 
 
 from abstraction import EscData
