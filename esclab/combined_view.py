@@ -98,7 +98,30 @@ class CombinedView(QDialog):
 
     def update_status(self):
         checked_boxes = [checkbox.text() for checkbox in self.checkboxes if checkbox.isChecked()]
-        print(checked_boxes)
+
+        
+        if not checked_boxes:
+            sender = self.sender()
+            if sender:
+                
+                sender.blockSignals(True)
+                sender.setChecked(True)
+                sender.blockSignals(False)
+
+                
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Warning)
+                msg.setWindowTitle(" Attribute Selection Error ")
+                msg.setText("<b> Please ensure that at least one data attribute remains selected. !")
+                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+                msg.exec()  
+
+
+
+                return
+
+        
+        self.status_label.setText("")
         self.update_plot(checked_boxes)
 
     def load_data(self):
