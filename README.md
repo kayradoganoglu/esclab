@@ -45,9 +45,9 @@ This page will display a canvas on left, and checkboxes for each attribute on le
 For every toggled button, on the canvas according plot will appear, alongside the canvas. Column size is limited to 3.<br>
 Displayed plots are X-Axis Locked to each other.
 #### Known Issues:
-1. (Issue) KEEP AT LEAST ONE OPTION SELECTED:This page initializes with no option selected on checkboxes. When user selects one, plot will display however,<br>
+1.(Issue) KEEP AT LEAST ONE OPTION SELECTED:This page initializes with no option selected on checkboxes. When user selects one, plot will display however,<br>
 when user deselects the only selected option (NONE of checkboxes selected) Application will crash!
-1.1. (Fixed) This issue has been resolved by implementing a checkbox validation mechanism.
+2. (Fixed) This issue has been resolved by implementing a checkbox validation mechanism.
 Now, when the user attempts to deselect the last remaining selected checkbox, an alert message is shown using QMessageBox, preventing the action and keeping the option selected.
 This ensures UI stability and eliminates the crash risk.
 ### Process Tool:
