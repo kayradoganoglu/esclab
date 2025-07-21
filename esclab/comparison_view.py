@@ -192,12 +192,35 @@ class ComparisonView(QDialog):
     def show_expression_result_plot(self, result, expression):
         # Plot oluştur
         fig = go.Figure()
+
+        # 🔹 1. Aritmetik sonuç çizgisi
         fig.add_trace(go.Scatter(
             y=result,
             mode='lines',
-            name=f"Result of: {expression}",
-            line=dict(color='blue')
+            name='Result of Expression',
+            line=dict(color='black'),
+            hoverinfo='y+name'
         ))
+
+        # 🔹 2. Kullanılan ESC'ler: E0, E1, E2, E3
+        esc_dataframes = {
+            'E0': self.df_esc0,
+            'E1': self.df_esc1,
+            'E2': self.df_esc2,
+            'E3': self.df_esc3
+        }
+        selected_attr = self.selected_value
+
+        for key in ['E0', 'E1', 'E2', 'E3']:
+            if key in expression and esc_dataframes[key] is not None:
+                fig.add_trace(go.Scatter(
+                    y=esc_dataframes[key][selected_attr],
+                    mode='lines',
+                    name=key,
+                    line=dict(),  # Renkler otomatik Plotly default olacak (Comparision View ile aynı)
+                    hoverinfo='y+name'
+                ))
+
         fig.update_layout(
             title=f"Result of Expression: {expression}",
             xaxis_title="Index",
