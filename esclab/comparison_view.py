@@ -182,6 +182,12 @@ class ComparisonView(QDialog):
             QMessageBox.warning(self, "Input Error", "Expression cannot be empty.")
             return
         
+        # Vektörel ifade kontrolü
+        import re
+        vector_pattern = r"^\((E0|E1|E2|E3)(,(E0|E1|E2|E3))*\)\s*[\+\-\*/\*{2}]{1,2}\s*\d+(\.\d+)?$"
+        is_vector_expr = bool(re.match(vector_pattern, expression.replace(" ", "")))
+
+        
         
 
 
@@ -203,22 +209,38 @@ class ComparisonView(QDialog):
                     return
                 variables[key] = pd.Series(df[selected_attr].values)
                 used_keys.append(key)
-
-        try:
-            result = eval(expression, {}, variables)
-            
-            
-            print("Computation result (first 10 values):", result[:10])
-            # Burada son adım olarak grafiğe çizeceğiz
-
-            # Örnek bilgi mesajı (bu sonra silinebilir)
-            QMessageBox.information(self, "Expression Success", f"Expression evaluated successfully.\nResult Length: {len(result)}")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Expression Error", f"Failed to evaluate expression:\n{str(e)}")
-            return
         
-        self.show_expression_result_plot(result, expression)
+        
+        if is_vector_expr:
+            # (E1,E2,E3) / 3 → ['E1','E2','E3'], op → /3
+            vector_match = re.match(r"^\((E[0-3](?:,E[0-3])*)\)\s*([\+\-\*/]{1,2})\s*(\d+(?:\.\d+)?)$", expression.replace(" ", ""))
+            if not vector_match:
+                QMessageBox.warning(self, "Parse Error", "Vector expression couldn't be parsed.")
+                return
+
+            esc_keys = vector_match.group(1).split(",")
+            operator = vector_match.group(2)
+            value = vector_match.group(3)
+
+            result_dict = {}
+            for key in esc_keys:
+                if key in variables:
+                    expr = f"{key} {operator} {value}"
+                    try:
+                        result = eval(expr, {}, variables)
+                        result_dict[expr] = result
+                    except Exception as e:
+                        QMessageBox.critical(self, "Expression Error", f"{expr} failed:\n{str(e)}")
+                        return
+            self.show_expression_result_plot(result_dict, expression)
+        else:
+            try:
+                result = eval(expression, {}, variables)
+                self.show_expression_result_plot({expression: result}, expression)
+            except Exception as e:
+                QMessageBox.critical(self, "Expression Error", f"Failed to evaluate expression:\n{str(e)}")
+                return
+
 
         
 
@@ -227,172 +249,205 @@ class ComparisonView(QDialog):
 
 
 
-    def show_expression_result_plot(self, result, expression):
-        # Plot oluştur
-        fig = go.Figure()
+    def show_expression_result_plot(self, result_dict, expression):
+            fig = go.Figure()
 
-        # 🔹 1. Aritmetik sonuç çizgisi
-        fig.add_trace(go.Scatter(
-            y=result,
-            mode='lines',
-            name='Result of Expression',
-            line=dict(color='black'),
-            hoverinfo='y+name'
-        ))
-
-        # 🔹 2. Kullanılan ESC'ler: E0, E1, E2, E3
-        esc_dataframes = {
-            'E0': self.df_esc0,
-            'E1': self.df_esc1,
-            'E2': self.df_esc2,
-            'E3': self.df_esc3
-        }
-        selected_attr = self.selected_value
-
-        for key in ['E0', 'E1', 'E2', 'E3']:
-            if key in expression and esc_dataframes[key] is not None:
+            # 🔹 1. Aritmetik sonuçlar
+            for label, data in result_dict.items():
                 fig.add_trace(go.Scatter(
-                    y=esc_dataframes[key][selected_attr],
+                    y=data,
                     mode='lines',
-                    name=key,
-                    line=dict(),  # Renkler otomatik Plotly default olacak (Comparision View ile aynı)
+                    name=label,
+                    line=dict(color='black'),
                     hoverinfo='y+name'
                 ))
 
-        fig.update_layout(
-            title=f"Result of Expression: {expression}",
-            xaxis_title="Index",
-            yaxis_title=self.selected_value
-        )
-
-        # HTML'e dönüştür
-        html = fig.to_html(include_plotlyjs='cdn')
-
-        # Yeni QDialog oluştur
-        dialog = QDialog(self)  # Ana pencereyi parent olarak veriyoruz
-        dialog.setWindowTitle("Expression Result Plot")
-        dialog.resize(1000, 600)
-
-        # Tüm pencere kontrolleri aktif hale getirilir
-        dialog.setWindowFlags(
-            Qt.WindowType.Window |
-            Qt.WindowType.CustomizeWindowHint |
-            Qt.WindowType.WindowMinimizeButtonHint |
-            Qt.WindowType.WindowMaximizeButtonHint |
-            Qt.WindowType.WindowCloseButtonHint
-        )
-
-        # Plot'u göster
-        layout = QVBoxLayout(dialog)
-
-        # 🔸 Attribute dropdown
-        attr_selector = QComboBox()
-        attr_selector.addItems([
-            'Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
-            'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'
-        ])
-        
-        attr_selector.setCurrentText(self.selected_value)  # O anda seçili olan ile eşleşsin
-        layout.addWidget(QLabel("Select Attribute to Apply:"))
-        layout.addWidget(attr_selector)
-
-        # Yeni expression girişi
-        new_expression_input = QLineEdit()
-        new_expression_input.setPlaceholderText("Enter New Arithmetic Expression Here:")
-        new_expression_input.setClearButtonEnabled(True)
-        layout.addWidget(new_expression_input)
-
-        # Buton
-        reapply_button = QPushButton("Apply New Expression")
-        reapply_button.setFixedHeight(30)
-        layout.addWidget(reapply_button)
-        view = QWebEngineView()
-
-        view.setHtml(html)
-        layout.addWidget(view)
-
-        dialog.setLayout(layout)
-        dialog.show()
-        dialog.raise_()
-        dialog.activateWindow()
-        def reapply_expression():
-            new_expr = new_expression_input.text().strip()
-            if not new_expr:
-                QMessageBox.warning(dialog, "Input Error", "Expression cannot be empty.")
-                return
-
+            # 🔹 2. ESC verileri (kıyas için)
             esc_dataframes = {
                 'E0': self.df_esc0,
                 'E1': self.df_esc1,
                 'E2': self.df_esc2,
                 'E3': self.df_esc3
             }
-            
+            selected_attr = self.selected_value
 
-            selected_attr = attr_selector.currentText()
-            variables = {}
-            for key, df in esc_dataframes.items():
-                if df is not None and selected_attr in df.columns:
-                    variables[key] = pd.Series(df[selected_attr].values)
-
-            try:
-                result = eval(new_expr, {}, variables)
-            except Exception as e:
-                QMessageBox.critical(dialog, "Expression Error", str(e))
-                return
-
-            # Güncellenmiş fig
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(y=result, mode='lines', name='Result of Expression', line=dict(color='black')))
             for key in ['E0', 'E1', 'E2', 'E3']:
-                if key in new_expr and esc_dataframes[key] is not None:
-                    fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+                if esc_dataframes[key] is not None:
+                    fig.add_trace(go.Scatter(
+                        y=esc_dataframes[key][selected_attr],
+                        mode='lines',
+                        name=key,
+                        line=dict(),
+                        hoverinfo='y+name'
+                    ))
 
-            fig.update_layout(title=f"Result of: {new_expr}", xaxis_title="Index", yaxis_title=selected_attr)
-            view.setHtml(fig.to_html(include_plotlyjs='cdn'))
+            fig.update_layout(
+                title=f"Result of Expression: {expression}",
+                xaxis_title="Index",
+                yaxis_title=selected_attr
+            )
 
-            
+            html = fig.to_html(include_plotlyjs='cdn')
 
-        reapply_button.clicked.connect(reapply_expression)
-        selected_attr = attr_selector.currentText()
+            # Yeni QDialog oluştur
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Expression Result Plot")
+            dialog.resize(1000, 600)
+            dialog.setWindowFlags(
+                Qt.WindowType.Window |
+                Qt.WindowType.CustomizeWindowHint |
+                Qt.WindowType.WindowMinimizeButtonHint |
+                Qt.WindowType.WindowMaximizeButtonHint |
+                Qt.WindowType.WindowCloseButtonHint
+            )
 
-        
+            layout = QVBoxLayout(dialog)
 
-        self.expression_plot_dialog = dialog
+            attr_selector = QComboBox()
+            attr_selector.addItems([
+                'Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
+                'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'
+            ])
+            attr_selector.setCurrentText(self.selected_value)
+            layout.addWidget(QLabel("Select Attribute to Apply:"))
+            layout.addWidget(attr_selector)
 
-        def update_plot_on_attribute_change():
-            selected_attr = attr_selector.currentText()
-            expression_to_apply = expression  # ilk girilen ifade, dış scope'tan geliyor
+            new_expression_input = QLineEdit()
+            new_expression_input.setPlaceholderText("Enter New Arithmetic Expression Here:")
+            new_expression_input.setClearButtonEnabled(True)
+            layout.addWidget(new_expression_input)
 
-            esc_dataframes = {
-                'E0': self.df_esc0,
-                'E1': self.df_esc1,
-                'E2': self.df_esc2,
-                'E3': self.df_esc3
-            }
+            reapply_button = QPushButton("Apply New Expression")
+            reapply_button.setFixedHeight(30)
+            layout.addWidget(reapply_button)
 
-            variables = {}
-            for key, df in esc_dataframes.items():
-                if df is not None and selected_attr in df.columns:
-                    variables[key] = pd.Series(df[selected_attr].values)
+            view = QWebEngineView()
+            view.setHtml(html)
+            layout.addWidget(view)
 
-            try:
-                result = eval(expression_to_apply, {}, variables)
-            except Exception as e:
-                QMessageBox.critical(dialog, "Expression Error", f"Attribute change failed:\n{str(e)}")
-                return
+            dialog.setLayout(layout)
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
 
-            new_fig = go.Figure()
-            new_fig.add_trace(go.Scatter(y=result, mode='lines', name='Result of Expression', line=dict(color='black')))
-            for key in ['E0', 'E1', 'E2', 'E3']:
-                if key in expression_to_apply and esc_dataframes[key] is not None:
-                    new_fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+            self.expression_plot_dialog = dialog
 
-            new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Index", yaxis_title=selected_attr)
-            view.setHtml(new_fig.to_html(include_plotlyjs='cdn'))
+            def reapply_expression():
+                new_expr = new_expression_input.text().strip()
+                if not new_expr:
+                    QMessageBox.warning(dialog, "Input Error", "Expression cannot be empty.")
+                    return
 
-            
-        attr_selector.currentTextChanged.connect(update_plot_on_attribute_change)
+                esc_dataframes = {
+                    'E0': self.df_esc0,
+                    'E1': self.df_esc1,
+                    'E2': self.df_esc2,
+                    'E3': self.df_esc3
+                }
+
+                selected_attr = attr_selector.currentText()
+                variables = {}
+                for key, df in esc_dataframes.items():
+                    if df is not None and selected_attr in df.columns:
+                        variables[key] = pd.Series(df[selected_attr].values)
+
+                import re
+                vector_pattern = r"^\((E0|E1|E2|E3)(,(E0|E1|E2|E3))*\)\s*[\+\-\*/\*{2}]{1,2}\s*\d+(\.\d+)?$"
+                is_vector_expr = bool(re.match(vector_pattern, new_expr.replace(" ", "")))
+
+                result_dict = {}
+                if is_vector_expr:
+                    vector_match = re.match(r"^\((E[0-3](?:,E[0-3])*)\)\s*([\+\-\*/]{1,2})\s*(\d+(?:\.\d+)?)$", new_expr.replace(" ", ""))
+                    if not vector_match:
+                        QMessageBox.warning(dialog, "Parse Error", "Vector expression couldn't be parsed.")
+                        return
+                    esc_keys = vector_match.group(1).split(",")
+                    operator = vector_match.group(2)
+                    value = vector_match.group(3)
+                    for key in esc_keys:
+                        if key in variables:
+                            expr = f"{key} {operator} {value}"
+                            try:
+                                result = eval(expr, {}, variables)
+                                result_dict[expr] = result
+                            except Exception as e:
+                                QMessageBox.critical(dialog, "Expression Error", f"{expr} failed:\n{str(e)}")
+                                return
+                else:
+                    try:
+                        result = eval(new_expr, {}, variables)
+                        result_dict[new_expr] = result
+                    except Exception as e:
+                        QMessageBox.critical(dialog, "Expression Error", str(e))
+                        return
+
+                fig = go.Figure()
+                for label, data in result_dict.items():
+                    fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color='black')))
+                for key in ['E0', 'E1', 'E2', 'E3']:
+                    if esc_dataframes[key] is not None:
+                        fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+
+                fig.update_layout(title=f"Result of: {new_expr}", xaxis_title="Index", yaxis_title=selected_attr)
+                view.setHtml(fig.to_html(include_plotlyjs='cdn'))
+
+            def update_plot_on_attribute_change():
+                selected_attr = attr_selector.currentText()
+                expression_to_apply = expression
+                esc_dataframes = {
+                    'E0': self.df_esc0,
+                    'E1': self.df_esc1,
+                    'E2': self.df_esc2,
+                    'E3': self.df_esc3
+                }
+                variables = {}
+                for key, df in esc_dataframes.items():
+                    if df is not None and selected_attr in df.columns:
+                        variables[key] = pd.Series(df[selected_attr].values)
+
+                result_dict = {}
+                import re
+                vector_pattern = r"^\((E0|E1|E2|E3)(,(E0|E1|E2|E3))*\)\s*[\+\-\*/\*{2}]{1,2}\s*\d+(\.\d+)?$"
+                is_vector_expr = bool(re.match(vector_pattern, expression_to_apply.replace(" ", "")))
+
+                if is_vector_expr:
+                    vector_match = re.match(r"^\((E[0-3](?:,E[0-3])*)\)\s*([\+\-\*/]{1,2})\s*(\d+(?:\.\d+)?)$", expression_to_apply.replace(" ", ""))
+                    if not vector_match:
+                        QMessageBox.warning(dialog, "Parse Error", "Vector expression couldn't be parsed.")
+                        return
+                    esc_keys = vector_match.group(1).split(",")
+                    operator = vector_match.group(2)
+                    value = vector_match.group(3)
+                    for key in esc_keys:
+                        if key in variables:
+                            expr = f"{key} {operator} {value}"
+                            try:
+                                result = eval(expr, {}, variables)
+                                result_dict[expr] = result
+                            except Exception as e:
+                                QMessageBox.critical(dialog, "Expression Error", f"{expr} failed:\n{str(e)}")
+                                return
+                else:
+                    try:
+                        result = eval(expression_to_apply, {}, variables)
+                        result_dict[expression_to_apply] = result
+                    except Exception as e:
+                        QMessageBox.critical(dialog, "Expression Error", str(e))
+                        return
+
+                new_fig = go.Figure()
+                for label, data in result_dict.items():
+                    new_fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color='black')))
+                for key in ['E0', 'E1', 'E2', 'E3']:
+                    if esc_dataframes[key] is not None:
+                        new_fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+
+                new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Index", yaxis_title=selected_attr)
+                view.setHtml(new_fig.to_html(include_plotlyjs='cdn'))
+
+            reapply_button.clicked.connect(reapply_expression)
+            attr_selector.currentTextChanged.connect(update_plot_on_attribute_change)
+
 
 
 
