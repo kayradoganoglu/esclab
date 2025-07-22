@@ -253,14 +253,17 @@ class ComparisonView(QDialog):
             fig = go.Figure()
 
             # 🔹 1. Aritmetik sonuçlar
-            for label, data in result_dict.items():
+            vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+            for idx, (label, data) in enumerate(result_dict.items()):
+                color = vector_colors[idx % len(vector_colors)]
                 fig.add_trace(go.Scatter(
                     y=data,
                     mode='lines',
                     name=label,
-                    line=dict(color='black'),
+                    line=dict(color=color),
                     hoverinfo='y+name'
                 ))
+
 
             # 🔹 2. ESC verileri (kıyas için)
             esc_dataframes = {
@@ -382,8 +385,11 @@ class ComparisonView(QDialog):
                         return
 
                 fig = go.Figure()
-                for label, data in result_dict.items():
-                    fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color='black')))
+                vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+                for idx, (label, data) in enumerate(result_dict.items()):
+                    color = vector_colors[idx % len(vector_colors)]
+                    fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
+
                 for key in ['E0', 'E1', 'E2', 'E3']:
                     if esc_dataframes[key] is not None:
                         fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
@@ -391,15 +397,18 @@ class ComparisonView(QDialog):
                 fig.update_layout(title=f"Result of: {new_expr}", xaxis_title="Index", yaxis_title=selected_attr)
                 view.setHtml(fig.to_html(include_plotlyjs='cdn'))
 
+
             def update_plot_on_attribute_change():
                 selected_attr = attr_selector.currentText()
                 expression_to_apply = expression
+
                 esc_dataframes = {
                     'E0': self.df_esc0,
                     'E1': self.df_esc1,
                     'E2': self.df_esc2,
                     'E3': self.df_esc3
                 }
+
                 variables = {}
                 for key, df in esc_dataframes.items():
                     if df is not None and selected_attr in df.columns:
@@ -436,14 +445,18 @@ class ComparisonView(QDialog):
                         return
 
                 new_fig = go.Figure()
-                for label, data in result_dict.items():
-                    new_fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color='black')))
+                vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+                for idx, (label, data) in enumerate(result_dict.items()):
+                    color = vector_colors[idx % len(vector_colors)]
+                    new_fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
+
                 for key in ['E0', 'E1', 'E2', 'E3']:
                     if esc_dataframes[key] is not None:
                         new_fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
 
                 new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Index", yaxis_title=selected_attr)
                 view.setHtml(new_fig.to_html(include_plotlyjs='cdn'))
+
 
             reapply_button.clicked.connect(reapply_expression)
             attr_selector.currentTextChanged.connect(update_plot_on_attribute_change)
