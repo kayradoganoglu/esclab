@@ -84,6 +84,36 @@ class ComparisonView(QDialog):
         self.expression_group_widget.setLayout(self.expression_group)
         self.expression_group_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         self.expression_group_widget.setMinimumWidth(280)  # Genişliği sabitlemek için isteğe bağlı
+        self.expression_group_widget.setVisible(False)
+
+        self.toggle_expression_button = QPushButton("Arithmetic Expression")
+        self.toggle_expression_button.setCheckable(True)
+        self.toggle_expression_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 2px solid #888;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+
+        self.toggle_expression_button.clicked.connect(self.toggle_expression_group)
+
+        v_expression_layout = QVBoxLayout()
+        v_expression_layout.addWidget(self.toggle_expression_button)
+        v_expression_layout.addWidget(self.expression_group_widget)
+
+        v_expression_widget = QWidget()
+        v_expression_widget.setLayout(v_expression_layout)
+
+        h_layout.addWidget(v_expression_widget)
+        h_layout.setStretchFactor(v_expression_widget, 1)
+
 
 
         h_layout.addWidget(self.expression_group_widget)
@@ -141,11 +171,19 @@ class ComparisonView(QDialog):
 
         self.update_plot()
 
+    def toggle_expression_group(self):
+        visible = self.toggle_expression_button.isChecked()
+        self.expression_group_widget.setVisible(visible)
+    
+
     def apply_expression_clicked(self):
         expression = self.expression_input.text().strip()
         if not expression:
             QMessageBox.warning(self, "Input Error", "Expression cannot be empty.")
             return
+        
+        
+
 
         esc_dataframes = {
             'E0': self.df_esc0,
@@ -246,7 +284,29 @@ class ComparisonView(QDialog):
 
         # Plot'u göster
         layout = QVBoxLayout(dialog)
+
+        # 🔸 Attribute dropdown
+        attr_selector = QComboBox()
+        attr_selector.addItems([
+            'Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
+            'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'
+        ])
+        attr_selector.setCurrentText(self.selected_value)  # O anda seçili olan ile eşleşsin
+        layout.addWidget(QLabel("Select Attribute to Apply:"))
+        layout.addWidget(attr_selector)
+
+        # Yeni expression girişi
+        new_expression_input = QLineEdit()
+        new_expression_input.setPlaceholderText("Enter New Arithmetic Expression Here:")
+        new_expression_input.setClearButtonEnabled(True)
+        layout.addWidget(new_expression_input)
+
+        # Buton
+        reapply_button = QPushButton("Apply New Expression")
+        reapply_button.setFixedHeight(30)
+        layout.addWidget(reapply_button)
         view = QWebEngineView()
+
         view.setHtml(html)
         layout.addWidget(view)
 
@@ -254,6 +314,48 @@ class ComparisonView(QDialog):
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
+        def reapply_expression():
+            new_expr = new_expression_input.text().strip()
+            if not new_expr:
+                QMessageBox.warning(dialog, "Input Error", "Expression cannot be empty.")
+                return
+
+            esc_dataframes = {
+                'E0': self.df_esc0,
+                'E1': self.df_esc1,
+                'E2': self.df_esc2,
+                'E3': self.df_esc3
+            }
+            
+
+            selected_attr = attr_selector.currentText()
+            variables = {}
+            for key, df in esc_dataframes.items():
+                if df is not None and selected_attr in df.columns:
+                    variables[key] = pd.Series(df[selected_attr].values)
+
+            try:
+                result = eval(new_expr, {}, variables)
+            except Exception as e:
+                QMessageBox.critical(dialog, "Expression Error", str(e))
+                return
+
+            # Güncellenmiş fig
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(y=result, mode='lines', name='Result of Expression', line=dict(color='black')))
+            for key in ['E0', 'E1', 'E2', 'E3']:
+                if key in new_expr and esc_dataframes[key] is not None:
+                    fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+
+            fig.update_layout(title=f"Result of: {new_expr}", xaxis_title="Index", yaxis_title=selected_attr)
+            view.setHtml(fig.to_html(include_plotlyjs='cdn'))
+
+            
+
+        reapply_button.clicked.connect(reapply_expression)
+        selected_attr = attr_selector.currentText()
+
+        
 
         self.expression_plot_dialog = dialog
 
@@ -445,7 +547,7 @@ class ComparisonView(QDialog):
         self.selected_value = item.text()
         print(f"Selected value: {self.selected_value}")
 
-        self.expression_group_widget.setVisible(True)
+        self.expression_group_widget.setVisible(False)
 
         if self.selected_value == 'RPM - Throttle':
             self.mean_plot()
