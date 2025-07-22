@@ -291,6 +291,7 @@ class ComparisonView(QDialog):
             'Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
             'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'
         ])
+        
         attr_selector.setCurrentText(self.selected_value)  # O anda seçili olan ile eşleşsin
         layout.addWidget(QLabel("Select Attribute to Apply:"))
         layout.addWidget(attr_selector)
@@ -358,6 +359,41 @@ class ComparisonView(QDialog):
         
 
         self.expression_plot_dialog = dialog
+
+        def update_plot_on_attribute_change():
+            selected_attr = attr_selector.currentText()
+            expression_to_apply = expression  # ilk girilen ifade, dış scope'tan geliyor
+
+            esc_dataframes = {
+                'E0': self.df_esc0,
+                'E1': self.df_esc1,
+                'E2': self.df_esc2,
+                'E3': self.df_esc3
+            }
+
+            variables = {}
+            for key, df in esc_dataframes.items():
+                if df is not None and selected_attr in df.columns:
+                    variables[key] = pd.Series(df[selected_attr].values)
+
+            try:
+                result = eval(expression_to_apply, {}, variables)
+            except Exception as e:
+                QMessageBox.critical(dialog, "Expression Error", f"Attribute change failed:\n{str(e)}")
+                return
+
+            new_fig = go.Figure()
+            new_fig.add_trace(go.Scatter(y=result, mode='lines', name='Result of Expression', line=dict(color='black')))
+            for key in ['E0', 'E1', 'E2', 'E3']:
+                if key in expression_to_apply and esc_dataframes[key] is not None:
+                    new_fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+
+            new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Index", yaxis_title=selected_attr)
+            view.setHtml(new_fig.to_html(include_plotlyjs='cdn'))
+
+            
+        attr_selector.currentTextChanged.connect(update_plot_on_attribute_change)
+
 
 
 
