@@ -253,7 +253,7 @@ class ComparisonView(QDialog):
             fig = go.Figure()
 
             # 🔹 1. Aritmetik sonuçlar
-            vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+            vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
             for idx, (label, data) in enumerate(result_dict.items()):
                 color = vector_colors[idx % len(vector_colors)]
                 fig.add_trace(go.Scatter(
@@ -385,7 +385,7 @@ class ComparisonView(QDialog):
                         return
 
                 fig = go.Figure()
-                vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+                vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
                 for idx, (label, data) in enumerate(result_dict.items()):
                     color = vector_colors[idx % len(vector_colors)]
                     fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
@@ -401,6 +401,7 @@ class ComparisonView(QDialog):
             def update_plot_on_attribute_change():
                 selected_attr = attr_selector.currentText()
                 expression_to_apply = expression
+                
 
                 esc_dataframes = {
                     'E0': self.df_esc0,
@@ -408,6 +409,12 @@ class ComparisonView(QDialog):
                     'E2': self.df_esc2,
                     'E3': self.df_esc3
                 }
+                
+                
+                for key, df in esc_dataframes.items():
+                    if df is not None:
+                        print(f"{key} DataFrame sütunları:", df.columns.tolist())
+
 
                 variables = {}
                 for key, df in esc_dataframes.items():
@@ -445,7 +452,7 @@ class ComparisonView(QDialog):
                         return
 
                 new_fig = go.Figure()
-                vector_colors = ['#000000', '#6B4226', '#555555', '#2E2E2E']
+                vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
                 for idx, (label, data) in enumerate(result_dict.items()):
                     color = vector_colors[idx % len(vector_colors)]
                     new_fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
