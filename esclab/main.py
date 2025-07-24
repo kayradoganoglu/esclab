@@ -15,6 +15,7 @@ from individual_view import IndividualView
 from process_tool import ProcessTool
 from save_utility import test_mkdir
 from console_widget import ConsoleWidget
+from PyQt6.QtWidgets import QLineEdit
 
 
 class MainWindow(QMainWindow):
@@ -78,7 +79,7 @@ class MainWindow(QMainWindow):
         self.folder_button = QPushButton("Select Folder", self)
         self.folder_button.clicked.connect(self.open_folder_browser)
         right_layout.addWidget(self.folder_button)
-
+        
         self.path_display_widget = QWidget()
         self.path_display_widget.setFixedHeight(30)
         right_layout.addWidget(self.path_display_widget)
@@ -88,6 +89,16 @@ class MainWindow(QMainWindow):
         self.path_display_widget.setLayout(self.path_display_widget_layout)
         self.path_display_widget_layout.addWidget(self.path_label)
         self.path_display_widget.setStyleSheet("background-color: gray;")
+
+        # Pole Input UI
+        self.pole_label = QLabel("<b> Enter Pole Value :", self)
+        right_layout.addWidget(self.pole_label)
+
+        self.pole_input = QLineEdit(self)
+        self.pole_input.setPlaceholderText("Enter Pole Value (Default Value is 23):")
+        self.pole_input.setText("23")  # Default Value Means that when this are is empty the application wont't crush.
+        right_layout.addWidget(self.pole_input)
+
 
         self.load_button = QPushButton("Load Data", self)
         self.load_button.clicked.connect(self.load_data_button)
