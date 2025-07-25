@@ -50,6 +50,7 @@ class IndividualView(QDialog):
                 'Current': self.esc0.current,
                 'Temperature': self.esc0.temp,
                 'eRPM': self.esc0.e_rpm,
+                'RPM': self.esc0.rpm,
                 'Throttle Duty': self.esc0.t_duty,
                 'Motor Duty': self.esc0.m_duty,
                 'Phase Current': self.esc0.phase_current,
@@ -58,7 +59,7 @@ class IndividualView(QDialog):
                 'Status 2': self.esc0.stat_2,
                 'Serial Number': self.esc0.serial_number
             })
-            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-0'+'  '+'Serial Number'+ self.esc0.serial_number)
+            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-0'+'  '+'Serial Number'+ self.esc0.serial_number)
             return fig
         except Exception as e:
             print(f"Error in create_plot_1: {e}")
@@ -72,6 +73,7 @@ class IndividualView(QDialog):
                 'Current': self.esc1.current,
                 'Temperature': self.esc1.temp,
                 'eRPM': self.esc1.e_rpm,
+                'RPM': self.esc1.rpm,
                 'Throttle Duty': self.esc1.t_duty,
                 'Motor Duty': self.esc1.m_duty,
                 'Phase Current': self.esc1.phase_current,
@@ -80,7 +82,7 @@ class IndividualView(QDialog):
                 'Status 2': self.esc1.stat_2,
                 'Serial Number': self.esc1.serial_number
             })
-            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-1'+'  '+'Serial Number'+ self.esc1.serial_number)
+            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-1'+'  '+'Serial Number'+ self.esc1.serial_number)
             return fig
         except Exception as e:
             print(f"Error in create_plot_1: {e}")
@@ -94,6 +96,7 @@ class IndividualView(QDialog):
                 'Current': self.esc2.current,
                 'Temperature': self.esc2.temp,
                 'eRPM': self.esc2.e_rpm,
+                'RPM': self.esc2.rpm,
                 'Throttle Duty': self.esc2.t_duty,
                 'Motor Duty': self.esc2.m_duty,
                 'Phase Current': self.esc2.phase_current,
@@ -102,7 +105,7 @@ class IndividualView(QDialog):
                 'Status 2': self.esc2.stat_2,
                 'Serial Number': self.esc2.serial_number
             })
-            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-2'+'  '+'Serial Number'+ self.esc2.serial_number)
+            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-2'+'  '+'Serial Number'+ self.esc2.serial_number)
             return fig
         except Exception as e:
             print(f"Error in create_plot_1: {e}")
@@ -116,6 +119,7 @@ class IndividualView(QDialog):
                 'Current': self.esc3.current,
                 'Temperature': self.esc3.temp,
                 'eRPM': self.esc3.e_rpm,
+                'RPM': self.esc3.rpm,
                 'Throttle Duty': self.esc3.t_duty,
                 'Motor Duty': self.esc3.m_duty,
                 'Phase Current': self.esc3.phase_current,
@@ -124,7 +128,7 @@ class IndividualView(QDialog):
                 'Status 2': self.esc3.stat_2,
                 'Serial Number': self.esc3.serial_number
             })
-            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-3'+'  '+'Serial Number'+ self.esc3.serial_number)
+            fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-3'+'  '+'Serial Number'+ self.esc3.serial_number)
             return fig
         except Exception as e:
             print(f"Error in create_plot_1: {e}")
