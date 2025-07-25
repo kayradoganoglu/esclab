@@ -297,6 +297,32 @@ class MainWindow(QMainWindow):
     def load_data_button(self):
             try:
                 self.process_files(self.files_path)
+
+                try:
+                    pole_value = float(self.pole_input.text().strip())
+                except ValueError:
+                    self.console.alert("Invalid Pole Value! Defaulting to 23.")
+                    pole_value = 23.0
+
+
+                if self.esc0_data:
+                    self.esc0_data.rpm = [erpm / pole_value for erpm in self.esc0_data.e_rpm]
+                if self.esc1_data:
+                    self.esc1_data.rpm = [erpm / pole_value for erpm in self.esc1_data.e_rpm]
+                if self.esc2_data:
+                    self.esc2_data.rpm = [erpm / pole_value for erpm in self.esc2_data.e_rpm]
+                if self.esc3_data:
+                    self.esc3_data.rpm = [erpm / pole_value for erpm in self.esc3_data.e_rpm]
+
+
+                print("Pole Value:", pole_value)
+                print("eRPM sample:", self.esc0_data.e_rpm[:5])
+                print("RPM sample:", self.esc0_data.rpm[:5])
+
+                print("LEN eRPM:", len(self.esc0_data.e_rpm))
+                print("LEN RPM:", len(self.esc0_data.rpm))
+
+
                 if self.esc0_data or self.esc1_data or self.esc2_data or self.esc3_data:
                     self.tool_button.setEnabled(True)
                 if not self.raw_tab_created:
