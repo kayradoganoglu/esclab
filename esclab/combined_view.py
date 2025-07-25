@@ -1,4 +1,3 @@
-#Nothing has been changed since last week. Just read the commit. 
 import tempfile
 import pandas as pd
 import plotly.graph_objects as go
@@ -64,7 +63,7 @@ class CombinedView(QDialog):
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
             self.checkbox_layout = QVBoxLayout()
             self.checkboxes = []
-            names = ['Voltage','Current','Temperature','eRPM','Throttle Duty','Motor Duty','Phase Current','Power','Status 1','Status 2']
+            names = ['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power','Status 1','Status 2']
             for i in range(10):
                 checkbox = QCheckBox(names[i])
                 checkbox.stateChanged.connect(self.update_status)
@@ -134,6 +133,7 @@ class CombinedView(QDialog):
                 'Current': self.esc0.current,
                 'Temperature': self.esc0.temp,
                 'eRPM': self.esc0.e_rpm,
+                'RPM': self.esc0.rpm,
                 'Throttle Duty': self.esc0.t_duty,
                 'Motor Duty': self.esc0.m_duty,
                 'Phase Current': self.esc0.phase_current,
@@ -153,6 +153,7 @@ class CombinedView(QDialog):
                 'Current': self.esc1.current,
                 'Temperature': self.esc1.temp,
                 'eRPM': self.esc1.e_rpm,
+                'RPM': self.esc1.rpm,
                 'Throttle Duty': self.esc1.t_duty,
                 'Motor Duty': self.esc1.m_duty,
                 'Phase Current': self.esc1.phase_current,
@@ -172,6 +173,7 @@ class CombinedView(QDialog):
                 'Current': self.esc2.current,
                 'Temperature': self.esc2.temp,
                 'eRPM': self.esc2.e_rpm,
+                'RPM': self.esc2.rpm,
                 'Throttle Duty': self.esc2.t_duty,
                 'Motor Duty': self.esc2.m_duty,
                 'Phase Current': self.esc2.phase_current,
@@ -191,6 +193,7 @@ class CombinedView(QDialog):
                 'Current': self.esc3.current,
                 'Temperature': self.esc3.temp,
                 'eRPM': self.esc3.e_rpm,
+                'RPM': self.esc3.rpm,
                 'Throttle Duty': self.esc3.t_duty,
                 'Motor Duty': self.esc3.m_duty,
                 'Phase Current': self.esc3.phase_current,
