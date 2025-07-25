@@ -134,7 +134,7 @@ class ComparisonView(QDialog):
             self.setGeometry(100, 100, 1100, 650)
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
             self.list_widget = QListWidget()
-            self.list_widget.addItems(['Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
+            self.list_widget.addItems(['Voltage', 'Current', 'Temperature', 'eRPM','RPM','Throttle Duty',
                                    'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'])
         else:
             if e0:
@@ -308,7 +308,7 @@ class ComparisonView(QDialog):
 
             attr_selector = QComboBox()
             attr_selector.addItems([
-                'Voltage', 'Current', 'Temperature', 'eRPM', 'Throttle Duty',
+                'Voltage', 'Current', 'Temperature', 'eRPM','RPM', 'Throttle Duty',
                 'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'
             ])
             attr_selector.setCurrentText(self.selected_value)
@@ -485,6 +485,7 @@ class ComparisonView(QDialog):
                 'Current': self.esc0.current,
                 'Temperature': self.esc0.temp,
                 'eRPM': self.esc0.e_rpm,
+                'RPM': self.esc0.rpm,
                 'Throttle Duty': self.esc0.t_duty,
                 'Motor Duty': self.esc0.m_duty,
                 'Phase Current': self.esc0.phase_current,
@@ -504,6 +505,7 @@ class ComparisonView(QDialog):
                 'Current': self.esc1.current,
                 'Temperature': self.esc1.temp,
                 'eRPM': self.esc1.e_rpm,
+                'RPM': self.esc1.rpm,
                 'Throttle Duty': self.esc1.t_duty,
                 'Motor Duty': self.esc1.m_duty,
                 'Phase Current': self.esc1.phase_current,
@@ -523,6 +525,7 @@ class ComparisonView(QDialog):
                 'Current': self.esc2.current,
                 'Temperature': self.esc2.temp,
                 'eRPM': self.esc2.e_rpm,
+                'RPM': self.esc2.rpm,
                 'Throttle Duty': self.esc2.t_duty,
                 'Motor Duty': self.esc2.m_duty,
                 'Phase Current': self.esc2.phase_current,
@@ -542,6 +545,7 @@ class ComparisonView(QDialog):
                 'Current': self.esc3.current,
                 'Temperature': self.esc3.temp,
                 'eRPM': self.esc3.e_rpm,
+                'RPM': self.esc3.rpm,
                 'Throttle Duty': self.esc3.t_duty,
                 'Motor Duty': self.esc3.m_duty,
                 'Phase Current': self.esc3.phase_current,
