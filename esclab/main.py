@@ -93,11 +93,11 @@ class MainWindow(QMainWindow):
         self.pole_value = 23
 
         # Pole Input UI
-        self.pole_label = QLabel("<b> Enter Pole Value :", self)
+        self.pole_label = QLabel("<b> Enter Pole Pair Value :", self)
         right_layout.addWidget(self.pole_label)
 
         self.pole_input = QLineEdit(self)
-        self.pole_input.setPlaceholderText("Enter Pole Value (Default Value is 23):")
+        self.pole_input.setPlaceholderText("Enter Pole Pair Value (Default Value is 23):")
         self.pole_input.setText("23")  # Default Value Means that when this are is empty the application wont't crush.
         right_layout.addWidget(self.pole_input)
 
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
                     pole_value = 23.0
 
                 self.pole_value = pole_value  # 🔴🔴 EKLENDİ
-                self.console.log(f">Pole Value: {self.pole_value} is added.")
+                self.console.log(f">Pole Pair Value: {self.pole_value} is added.")
 
 
                 if self.esc0_data:
