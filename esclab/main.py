@@ -90,6 +90,8 @@ class MainWindow(QMainWindow):
         self.path_display_widget_layout.addWidget(self.path_label)
         self.path_display_widget.setStyleSheet("background-color: gray;")
 
+        self.pole_value = 23
+
         # Pole Input UI
         self.pole_label = QLabel("<b> Enter Pole Value :", self)
         right_layout.addWidget(self.pole_label)
@@ -197,13 +199,13 @@ class MainWindow(QMainWindow):
         flight_e2=None
         flight_e3=None
         if e0:
-            flight_e0 = copy.deepcopy(PostProcess(e0,type=test_type))
+            flight_e0 = copy.deepcopy(PostProcess(e0, type=test_type, pole_value=self.pole_value))
         if e1:
-            flight_e1 = copy.deepcopy(PostProcess(e1,type=test_type))
+            flight_e1 = copy.deepcopy(PostProcess(e1, type=test_type, pole_value=self.pole_value))
         if e2:
-            flight_e2 = copy.deepcopy(PostProcess(e2,type=test_type))
+            flight_e2 = copy.deepcopy(PostProcess(e2, type=test_type, pole_value=self.pole_value))
         if e3:
-            flight_e3 = copy.deepcopy(PostProcess(e3,type=test_type))
+            flight_e3 = copy.deepcopy(PostProcess(e3, type=test_type, pole_value=self.pole_value))
 
         if not self.flight_test_tab_created:
             self.create_tab("Flight Test", self.open_individual_view_window,
@@ -219,13 +221,13 @@ class MainWindow(QMainWindow):
         combined_e2 = None
         combined_e3 = None
         if e0:
-            combined_e0 = copy.deepcopy(PostProcess(e0, type=test_type, esc_id=0))
+            combined_e0 = copy.deepcopy(PostProcess(e0, type=test_type, esc_id=0, pole_value=self.pole_value))
         if e1:
-            combined_e1 = copy.deepcopy(PostProcess(e1, type=test_type, esc_id=1))
+            combined_e1 = copy.deepcopy(PostProcess(e1, type=test_type, esc_id=1, pole_value=self.pole_value))
         if e2:
-            combined_e2 = copy.deepcopy(PostProcess(e2, type=test_type, esc_id=2))
+            combined_e2 = copy.deepcopy(PostProcess(e2, type=test_type, esc_id=2, pole_value=self.pole_value))
         if e3:
-            combined_e3 = copy.deepcopy(PostProcess(e3, type=test_type, esc_id=3))
+            combined_e3 = copy.deepcopy(PostProcess(e3, type=test_type, esc_id=3, pole_value=self.pole_value))
 
         if not self.combined_step_test_tab_created:
             self.create_tab("Combined Step Test", self.open_individual_view_window,
@@ -240,13 +242,13 @@ class MainWindow(QMainWindow):
         step_e2 = None
         step_e3 = None
         if e0:
-            step_e0 = copy.deepcopy(PostProcess(e0, type=test_type))
+            step_e0 = copy.deepcopy(PostProcess(e0, type=test_type, pole_value=self.pole_value))
         if e1:
-            step_e1 = copy.deepcopy(PostProcess(e1, type=test_type))
+            step_e1 = copy.deepcopy(PostProcess(e1, type=test_type, pole_value=self.pole_value))
         if e2:
-            step_e2 = copy.deepcopy(PostProcess(e2, type=test_type))
+            step_e2 = copy.deepcopy(PostProcess(e2, type=test_type, pole_value=self.pole_value))
         if e3:
-            step_e3 = copy.deepcopy(PostProcess(e3, type=test_type))
+            step_e3 = copy.deepcopy(PostProcess(e3, type=test_type, pole_value=self.pole_value))
 
         if not self.step_test_tab_created:
             self.create_tab("Step Test", self.open_individual_view_window,
@@ -303,6 +305,8 @@ class MainWindow(QMainWindow):
                 except ValueError:
                     self.console.alert("Invalid Pole Value! Defaulting to 23.")
                     pole_value = 23.0
+
+                self.pole_value = pole_value  # 🔴🔴 EKLENDİ
 
 
                 if self.esc0_data:
