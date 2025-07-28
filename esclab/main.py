@@ -307,6 +307,7 @@ class MainWindow(QMainWindow):
                     pole_value = 23.0
 
                 self.pole_value = pole_value  # 🔴🔴 EKLENDİ
+                self.console.log(f">Pole Value: {self.pole_value} is added.")
 
 
                 if self.esc0_data:
