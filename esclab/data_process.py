@@ -3,10 +3,10 @@ from abstraction import EscData, take_values_from_csv
 
 
 class PostProcess(EscData):
-    def __init__(self, esc_data,type=0,esc_id=0):
+    def __init__(self, esc_data,type=0,esc_id=0,pole_value=23):
         super().__init__(esc_data.voltage, esc_data.current, esc_data.temp, esc_data.e_rpm, esc_data.t_duty,
                          esc_data.m_duty, esc_data.phase_current, esc_data.pwr, esc_data.stat_1, esc_data.stat_2,esc_data.serial_number)
-        self.rpm = self.compute_rpm()
+        self.rpm = self.compute_rpm(pole_value)
         self.running_array=[(1,0,0,0,0,1,0,1,0,1),(0,1,0,0,1,0,1,0,1,1),(0,0,1,0,1,1,0,0,1,1),(0,0,0,1,0,0,1,1,1,0)]
         self.zero_crossing=[]
         self.mean_rpm=[]
