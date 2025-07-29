@@ -9,6 +9,7 @@
 *Please install packages using* **pip**.<br>
 Use command:<br>
 **pip install numpy pandas matplotlib plotly pyqt6 pyqt6-webengine**<br>
+**python -m pip install spicy**<br>
 *After package installation* run **main.py**
 
 ## How to use:
