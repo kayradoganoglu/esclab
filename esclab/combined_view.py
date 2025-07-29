@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from abstraction import EscData
 from data_process import PostProcess
+from scipy.signal import savgol_filter
 
 
 class CombinedView(QDialog):
@@ -86,7 +87,32 @@ class CombinedView(QDialog):
 
         self.setLayout(main_layout)
 
+        # Smoothing durumu
+        self.smoothing_enabled = False
+
+        # Smoothing Toggle Button
+        self.smooth_button = QPushButton("Toggle Smoothing Curve")
+        self.smooth_button.setCheckable(True)
+        self.smooth_button.setFixedWidth(200)
+        self.smooth_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #999;
+                font-weight: bold;
+                padding: 4px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:checked {
+                background-color: #a0c4ff;
+            }
+        """)
+        self.smooth_button.clicked.connect(self.toggle_smoothing)
+
         self.status_label = QLabel()
+        self.checkbox_layout.addWidget(self.smooth_button)
         self.checkbox_layout.addWidget(self.status_label)
 
         if post_process:
@@ -306,6 +332,9 @@ class CombinedView(QDialog):
                 col = i % 3 + 1
                 for esc in self.df_combined['ESC'].unique():
                     df_filtered = self.df_combined[self.df_combined['ESC'] == esc]
+                    if self.smoothing_enabled and col_name in df_filtered.columns and len(df_filtered[col_name]) >= 201:
+                        df_filtered = df_filtered.copy()
+                        df_filtered[col_name] = savgol_filter(df_filtered[col_name], window_length=201, polyorder=2)
                     trace = go.Scatter(
                         x=df_filtered['Time'],
                         y=df_filtered[col_name],
@@ -336,3 +365,16 @@ class CombinedView(QDialog):
             fig.write_html(tmp_file.name)
             tmp_file_path = tmp_file.name
         self.browser.setUrl(QUrl.fromLocalFile(tmp_file_path))
+
+
+    def toggle_smoothing(self):
+        checked_boxes = [checkbox.text() for checkbox in self.checkboxes if checkbox.isChecked()]
+        
+        if not checked_boxes:
+            QMessageBox.warning(self, "No Selection", "<b> Please select at least one Checkbox before enabling smoothing.")
+            # Butonu geri kapatalım:
+            self.smooth_button.setChecked(False)
+            return
+
+        self.smoothing_enabled = not self.smoothing_enabled
+        self.update_plot(checked_boxes)
