@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import QSizePolicy
 from PyQt6.QtWidgets import (
     QVBoxLayout, QLabel, QLineEdit, QPushButton, QWidget, QSizePolicy
 )
-
+from scipy.signal import savgol_filter
 
 
 
@@ -136,6 +136,7 @@ class ComparisonView(QDialog):
             self.list_widget = QListWidget()
             self.list_widget.addItems(['Voltage', 'Current', 'Temperature', 'eRPM','RPM','Throttle Duty',
                                    'Motor Duty', 'Phase Current', 'Power', 'Status 1', 'Status 2'])
+            
         else:
             if e0:
                 self.esc0 : PostProcess = e0
@@ -154,13 +155,49 @@ class ComparisonView(QDialog):
                                    'Motor Duty','Phase Current','Power','RPM - Throttle'])
 
 
+        self.smoothing_enabled = False
+
+        # Liste ve toggle butonu birlikte tutacak layout
+        self.smoothing_button = QPushButton("Smoothing Curve")
+        self.smoothing_button.setCheckable(True)
+        self.smoothing_button.setChecked(False)
+        self.smoothing_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #999;
+                font-weight: bold;
+                padding: 6px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:checked {
+                background-color: #a0c4ff;
+            }
+        """)
+        self.smoothing_button.clicked.connect(self.on_smoothing_toggle_clicked)
+
+        list_layout = QVBoxLayout()
+        list_layout.addWidget(self.list_widget)
+        list_layout.addWidget(self.smoothing_button)
+
+        list_widget_container = QWidget()
+        list_widget_container.setLayout(list_layout)
+        h_layout.addWidget(list_widget_container)
+        h_layout.setStretchFactor(list_widget_container, 1)
+
+
+
+
+
         self.selected_value = 'Voltage'
         self.list_widget.itemClicked.connect(self.on_item_clicked)
         self.browser = QWebEngineView()
         
-        h_layout.addWidget(self.list_widget)
+        #h_layout.addWidget(self.list_widget)
         h_layout.addWidget(self.browser)
-        h_layout.setStretchFactor(self.list_widget, 1)
+        #h_layout.setStretchFactor(self.list_widget, 1)
         h_layout.setStretchFactor(self.browser, 5)
         self.setLayout(h_layout)
         print("here")
@@ -251,18 +288,31 @@ class ComparisonView(QDialog):
 
     def show_expression_result_plot(self, result_dict, expression):
             fig = go.Figure()
+            self.last_expression = expression
 
             # 🔹 1. Aritmetik sonuçlar
             vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
+            # X-axis olarak uygun Time verisini bul (örnek: E1 varsa onun Time verisi)
+            time_x = None
+            for esc_key in ['E0', 'E1', 'E2', 'E3']:
+                if esc_key in expression and getattr(self, f'df_esc{esc_key[-1]}') is not None:
+                    time_x = getattr(self, f'df_esc{esc_key[-1]}')['Time']
+                    break
+
+            if time_x is None:
+                time_x = list(range(len(next(iter(result_dict.values())))))  # fallback to index
+
             for idx, (label, data) in enumerate(result_dict.items()):
                 color = vector_colors[idx % len(vector_colors)]
                 fig.add_trace(go.Scatter(
+                    x=time_x,
                     y=data,
                     mode='lines',
                     name=label,
                     line=dict(color=color),
-                    hoverinfo='y+name'
+                    hoverinfo='x+y+name'
                 ))
+
 
 
             # 🔹 2. ESC verileri (kıyas için)
@@ -276,13 +326,22 @@ class ComparisonView(QDialog):
 
             for key in ['E0', 'E1', 'E2', 'E3']:
                 if esc_dataframes[key] is not None:
+                    y_data = esc_dataframes[key][selected_attr]
+                    if self.smoothing_enabled and len(y_data) >= 201:
+                        try:
+                            y_data = savgol_filter(y_data, window_length=201, polyorder=2)
+                        except Exception as e:
+                            print(f"Smoothing failed on ESC {key}: {e}")
                     fig.add_trace(go.Scatter(
-                        y=esc_dataframes[key][selected_attr],
+                        x=esc_dataframes[key]['Time'],
+                        y=y_data,
                         mode='lines',
                         name=key,
                         line=dict(),
-                        hoverinfo='y+name'
+                        hoverinfo='x+y+name'
                     ))
+
+
 
             fig.update_layout(
                 title=f"Result of Expression: {expression}",
@@ -320,9 +379,55 @@ class ComparisonView(QDialog):
             new_expression_input.setClearButtonEnabled(True)
             layout.addWidget(new_expression_input)
 
+            # Yeni HBox Layout
+            button_row = QHBoxLayout()
+
             reapply_button = QPushButton("Apply New Expression")
             reapply_button.setFixedHeight(30)
-            layout.addWidget(reapply_button)
+            reapply_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+            smooth_expr_button = QPushButton("Smoothing Curve")
+            smooth_expr_button.setCheckable(True)
+            smooth_expr_button.setFixedHeight(30)
+            smooth_expr_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            smooth_expr_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    border: 1px solid #999;
+                    font-weight: bold;
+                    padding: 4px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #d0d0d0;
+                }
+                QPushButton:checked {
+                    background-color: #a0c4ff;
+                }
+            """)
+
+            button_row.addWidget(reapply_button)
+            button_row.addWidget(smooth_expr_button)
+            layout.addLayout(button_row)
+            # Smoothing butonuna basıldığında yeniden çizim yap
+            def toggle_smoothing_button():
+                self.smoothing_enabled = smooth_expr_button.isChecked()
+                self.smoothing_button.setChecked(self.smoothing_enabled)
+
+                # Kutudaki ifade boşsa, son kullanılanı kullan
+                current_expr = new_expression_input.text().strip()
+                if not current_expr and hasattr(self, "last_expression"):
+                    new_expression_input.setText(self.last_expression)
+                    current_expr = self.last_expression
+
+                reapply_expression()
+
+
+
+            smooth_expr_button.clicked.connect(toggle_smoothing_button)
+            
+            
+
 
             view = QWebEngineView()
             view.setHtml(html)
@@ -334,6 +439,8 @@ class ComparisonView(QDialog):
             dialog.activateWindow()
 
             self.expression_plot_dialog = dialog
+            # Ana sayfadaki smoothing aktifse bu buton da aktif başlasın
+            smooth_expr_button.setChecked(self.smoothing_enabled)
 
             def reapply_expression():
                 new_expr = new_expression_input.text().strip()
@@ -372,6 +479,8 @@ class ComparisonView(QDialog):
                             expr = f"{key} {operator} {value}"
                             try:
                                 result = eval(expr, {}, variables)
+                                if self.smoothing_enabled and len(result) >= 201:
+                                    result = savgol_filter(result, window_length=201, polyorder=2)
                                 result_dict[expr] = result
                             except Exception as e:
                                 QMessageBox.critical(dialog, "Expression Error", f"{expr} failed:\n{str(e)}")
@@ -379,6 +488,8 @@ class ComparisonView(QDialog):
                 else:
                     try:
                         result = eval(new_expr, {}, variables)
+                        if self.smoothing_enabled and len(result) >= 201:
+                            result = savgol_filter(result, window_length=201, polyorder=2)
                         result_dict[new_expr] = result
                     except Exception as e:
                         QMessageBox.critical(dialog, "Expression Error", str(e))
@@ -386,13 +497,38 @@ class ComparisonView(QDialog):
 
                 fig = go.Figure()
                 vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
+
+                # ⏱ X-axis ayarla
+                time_x = None
+                for esc_key in ['E0', 'E1', 'E2', 'E3']:
+                    if esc_key in new_expr and esc_dataframes[esc_key] is not None:
+                        time_x = esc_dataframes[esc_key]['Time']
+                        break
+                if time_x is None:
+                    time_x = list(range(len(next(iter(result_dict.values())))))
+
                 for idx, (label, data) in enumerate(result_dict.items()):
                     color = vector_colors[idx % len(vector_colors)]
-                    fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
+                    fig.add_trace(go.Scatter(x=time_x, y=data, mode='lines', name=label, line=dict(color=color)))
 
                 for key in ['E0', 'E1', 'E2', 'E3']:
                     if esc_dataframes[key] is not None:
-                        fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+                        y_data = esc_dataframes[key][selected_attr]
+                        if self.smoothing_enabled and len(y_data) >= 201:
+                            try:
+                                y_data = savgol_filter(y_data, window_length=201, polyorder=2)
+                            except Exception as e:
+                                print(f"Smoothing failed on ESC {key}: {e}")
+                        fig.add_trace(go.Scatter(
+                            x=esc_dataframes[key]['Time'],
+                            y=y_data,
+                            mode='lines',
+                            name=key,
+                            line=dict(),
+                            hoverinfo='x+y+name'
+                        ))
+
+
 
                 fig.update_layout(title=f"Result of: {new_expr}", xaxis_title="Index", yaxis_title=selected_attr)
                 view.setHtml(fig.to_html(include_plotlyjs='cdn'))
@@ -400,8 +536,10 @@ class ComparisonView(QDialog):
 
             def update_plot_on_attribute_change():
                 selected_attr = attr_selector.currentText()
-                expression_to_apply = expression
-                
+                expression_to_apply = new_expression_input.text().strip()
+                if not expression_to_apply:
+                    if hasattr(self, "last_expression"):
+                        expression_to_apply = self.last_expression
 
                 esc_dataframes = {
                     'E0': self.df_esc0,
@@ -409,12 +547,10 @@ class ComparisonView(QDialog):
                     'E2': self.df_esc2,
                     'E3': self.df_esc3
                 }
-                
-                
+
                 for key, df in esc_dataframes.items():
                     if df is not None:
                         print(f"{key} DataFrame sütunları:", df.columns.tolist())
-
 
                 variables = {}
                 for key, df in esc_dataframes.items():
@@ -451,18 +587,43 @@ class ComparisonView(QDialog):
                         QMessageBox.critical(dialog, "Expression Error", str(e))
                         return
 
+                # 🔹 X ekseni olarak Time belirle
+                time_x = None
+                for esc_key in ['E0', 'E1', 'E2', 'E3']:
+                    if esc_key in expression_to_apply and esc_dataframes[esc_key] is not None:
+                        time_x = esc_dataframes[esc_key]['Time']
+                        break
+                if time_x is None:
+                    time_x = list(range(len(next(iter(result_dict.values())))))  # fallback to index
+
                 new_fig = go.Figure()
                 vector_colors = ['#171717', '#444444', '#526D82', '#A27B5C']
                 for idx, (label, data) in enumerate(result_dict.items()):
                     color = vector_colors[idx % len(vector_colors)]
-                    new_fig.add_trace(go.Scatter(y=data, mode='lines', name=label, line=dict(color=color)))
-
+                    new_fig.add_trace(go.Scatter(x=time_x, y=data, mode='lines', name=label, line=dict(color=color)))
+                
                 for key in ['E0', 'E1', 'E2', 'E3']:
                     if esc_dataframes[key] is not None:
-                        new_fig.add_trace(go.Scatter(y=esc_dataframes[key][selected_attr], mode='lines', name=key))
+                        y_data = esc_dataframes[key][selected_attr]
+                        if self.smoothing_enabled and len(y_data) >= 201:
+                            try:
+                                y_data = savgol_filter(y_data, window_length=201, polyorder=2)
+                            except Exception as e:
+                                print(f"Smoothing failed on ESC {key}: {e}")
+                        new_fig.add_trace(go.Scatter(
+                            x=esc_dataframes[key]['Time'],
+                            y=y_data,
+                            mode='lines',
+                            name=key,
+                            line=dict(),
+                            hoverinfo='x+y+name'
+                        ))
 
-                new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Index", yaxis_title=selected_attr)
+
+
+                new_fig.update_layout(title=f"Result of: {expression_to_apply}", xaxis_title="Time", yaxis_title=selected_attr)
                 view.setHtml(new_fig.to_html(include_plotlyjs='cdn'))
+
 
 
             reapply_button.clicked.connect(reapply_expression)
@@ -670,29 +831,50 @@ class ComparisonView(QDialog):
             self.update_plot()
 
     def update_plot(self):
-        fig = px.line(self.df_combined, x='Time', y=self.selected_value, color='ESC',
-                      labels={'Time': 'Time', self.selected_value: self.selected_value},
-                      title='Comparison View')
+        df_to_plot = self.df_combined.copy()
+
+        if self.smoothing_enabled and self.selected_value in df_to_plot.columns:
+            try:
+                df_to_plot[self.selected_value] = df_to_plot.groupby('ESC')[self.selected_value].transform(
+                    lambda x: savgol_filter(x, window_length=201, polyorder=2) if len(x) >= 201 else x
+                )
+            except Exception as e:
+                print(f"Smoothing failed: {e}")
+
+        fig = px.line(df_to_plot, x='Time', y=self.selected_value, color='ESC',
+                    labels={'Time': 'Time', self.selected_value: self.selected_value},
+                    title='Comparison View')
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
             fig.write_html(tmp_file.name)
             tmp_file_path = tmp_file.name
 
         self.browser.setUrl(QUrl.fromLocalFile(tmp_file_path))
+
 
     def mean_plot(self):
+        df_sorted = self.df_rpm_combined.sort_values(by='Throttle').copy()
 
-        df_sorted = self.df_rpm_combined.sort_values(by='Throttle')
+        if self.smoothing_checkbox.isChecked():
+            try:
+                df_sorted['Mean RPM'] = df_sorted.groupby('ESC')['Mean RPM'].transform(
+                    lambda x: savgol_filter(x, window_length=201, polyorder=2) if len(x) >= 201 else x
+                )
+            except Exception as e:
+                print(f"Smoothing failed in mean_plot: {e}")
 
-        # Create the line plot with Plotly Express
         fig = px.line(df_sorted, x='Throttle', y='Mean RPM', color='ESC', markers=True,
-                      title='Mean RPM vs Throttle',
-                      labels={'Throttle': 'Throttle', 'Mean RPM': 'Mean RPM','ESC':'ESC'})
-        fig.update_traces(marker=dict(size=8, symbol='circle'),  # Use circles for markers
-                          line=dict(width=2))
+                    title='Mean RPM vs Throttle',
+                    labels={'Throttle': 'Throttle', 'Mean RPM': 'Mean RPM','ESC':'ESC'})
+        fig.update_traces(marker=dict(size=8, symbol='circle'), line=dict(width=2))
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
             fig.write_html(tmp_file.name)
             tmp_file_path = tmp_file.name
 
         self.browser.setUrl(QUrl.fromLocalFile(tmp_file_path))
+
+    def on_smoothing_toggle_clicked(self):
+        self.smoothing_enabled = self.smoothing_button.isChecked()
+        self.update_plot()
+
