@@ -9,6 +9,9 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QDialog, QTabWidget
 
 from abstraction import EscData
+from PyQt6.QtWidgets import QCheckBox, QPushButton
+from scipy.signal import savgol_filter
+
 
 
 class IndividualView(QDialog):
@@ -22,10 +25,51 @@ class IndividualView(QDialog):
         self.setWindowTitle("Individual View")
         self.setGeometry(150, 150, 800, 600)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
-        self.tab_widget = QTabWidget()
+
+        # Ana layout
         layout = QVBoxLayout()
-        layout.addWidget(self.tab_widget)
+
+        # ✅ Wrapper widget ve layout (buton + tablar için)
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout()
+        wrapper_layout.setSpacing(5)
+        wrapper_layout.setContentsMargins(5, 5, 5, 5)
+        wrapper.setLayout(wrapper_layout)
+
+        # 🔹 Smoothing Toggle Button
+        self.smoothing_enabled = False
+        self.smooth_button = QPushButton("Toggle Smoothing Curve")
+        self.smooth_button.setCheckable(True)
+        self.smooth_button.setFixedWidth(250)
+        self.smooth_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 2px solid #888;
+                font-weight: bold;
+                font-size: 13px;
+                padding: 6px;
+                border-radius: 6px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:checked {
+                background-color: #a0c4ff;
+            }
+        """)
+        self.smooth_button.clicked.connect(self.toggle_smoothing)
+        wrapper_layout.addWidget(self.smooth_button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # 🔹 ESC Tabları
+        self.tab_widget = QTabWidget()
+        wrapper_layout.addWidget(self.tab_widget)
+
+        # ✅ Wrapper'ı ana layout’a ekle
+        layout.addWidget(wrapper)
         self.setLayout(layout)
+
+        # 🔹 Sekmeleri oluştur
         if e0:
             self.esc0 : EscData = e0
             self.create_tab("ESC 0", self.create_plot_1())
@@ -38,6 +82,7 @@ class IndividualView(QDialog):
         if e3:
             self.esc3 : EscData = e3
             self.create_tab("ESC 3", self.create_plot_4())
+
 
 
 
@@ -59,6 +104,11 @@ class IndividualView(QDialog):
                 'Status 2': self.esc0.stat_2,
                 'Serial Number': self.esc0.serial_number
             })
+            if self.smoothing_enabled:
+                for col in ['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power']:
+                    if len(df[col]) >= 201:
+                        df[col] = savgol_filter(df[col], window_length=201, polyorder=2)
+
             fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-0'+'  '+'Serial Number'+ self.esc0.serial_number)
             return fig
         except Exception as e:
@@ -82,6 +132,11 @@ class IndividualView(QDialog):
                 'Status 2': self.esc1.stat_2,
                 'Serial Number': self.esc1.serial_number
             })
+            if self.smoothing_enabled:
+                for col in ['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power']:
+                    if len(df[col]) >= 201:
+                        df[col] = savgol_filter(df[col], window_length=201, polyorder=2)
+
             fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-1'+'  '+'Serial Number'+ self.esc1.serial_number)
             return fig
         except Exception as e:
@@ -105,6 +160,11 @@ class IndividualView(QDialog):
                 'Status 2': self.esc2.stat_2,
                 'Serial Number': self.esc2.serial_number
             })
+            if self.smoothing_enabled:
+                for col in ['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power']:
+                    if len(df[col]) >= 201:
+                        df[col] = savgol_filter(df[col], window_length=201, polyorder=2)
+
             fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-2'+'  '+'Serial Number'+ self.esc2.serial_number)
             return fig
         except Exception as e:
@@ -128,6 +188,12 @@ class IndividualView(QDialog):
                 'Status 2': self.esc3.stat_2,
                 'Serial Number': self.esc3.serial_number
             })
+
+            if self.smoothing_enabled:
+                for col in ['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power']:
+                    if len(df[col]) >= 201:
+                        df[col] = savgol_filter(df[col], window_length=201, polyorder=2)
+
             fig = px.line(df, x='Index', y=['Voltage','Current','Temperature','eRPM','RPM','Throttle Duty','Motor Duty','Phase Current','Power'], title='ESC-3'+'  '+'Serial Number'+ self.esc3.serial_number)
             return fig
         except Exception as e:
@@ -147,3 +213,19 @@ class IndividualView(QDialog):
         layout.addWidget(browser)
         tab.setLayout(layout)
         self.tab_widget.addTab(tab, title)
+
+    def refresh_tabs(self):
+        self.tab_widget.clear()
+        if self.esc0:
+            self.create_tab("ESC 0", self.create_plot_1())
+        if self.esc1:
+            self.create_tab("ESC 1", self.create_plot_2())
+        if self.esc2:
+            self.create_tab("ESC 2", self.create_plot_3())
+        if self.esc3:
+            self.create_tab("ESC 3", self.create_plot_4())
+
+    def toggle_smoothing(self):
+        self.smoothing_enabled = not self.smoothing_enabled
+        self.refresh_tabs()
+
