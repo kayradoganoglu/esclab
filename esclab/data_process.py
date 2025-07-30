@@ -74,48 +74,75 @@ class PostProcess(EscData):
                 self.stat_2 = self.stat_2[:i + 1]
             else:
                 break
-    def flight_syncro(self,duration_sec=100):
-        time, rpm, current, motor_duty, temp, throttle_duty, voltage = [], [], [], [], [], [], []
-        phase_cur , pow = [],[]
-        (step_start_idx, step_end_idx) = self.zero_crossing[0]
+            
+    def flight_syncro(self, duration_sec=100):
+        time = []
+        rpm = []
+        current = []
+        motor_duty = []
+        temp = []
+        throttle_duty = []
+        voltage = []
+        phase_cur = []
+        pow = []
 
-        num_points = step_end_idx - step_start_idx + 1
+        num_segments = len(self.zero_crossing)
+        if num_segments == 0:
+            print("No valid segments found in zero_crossing.")
+            return
 
-        dt = duration_sec / num_points
+        segment_duration = duration_sec / num_segments
+        current_time = 0
 
-        t_temp = np.arange(0, duration_sec, dt)
-        time.extend(t_temp)
+        for (step_start_idx, step_end_idx) in self.zero_crossing:
+            num_points = step_end_idx - step_start_idx + 1
+            if num_points <= 0:
+                continue
 
-        rpm.extend(self.rpm[step_start_idx:step_end_idx + 1])
-        current.extend(self.current[step_start_idx:step_end_idx + 1])
-        motor_duty.extend(self.m_duty[step_start_idx:step_end_idx + 1])
-        temp.extend(self.temp[step_start_idx:step_end_idx + 1])
-        throttle_duty.extend(self.t_duty[step_start_idx:step_end_idx + 1])
-        voltage.extend(self.voltage[step_start_idx:step_end_idx + 1])
-        phase_cur.extend(self.phase_current[step_start_idx:step_end_idx + 1])
-        pow.extend(self.pwr[step_start_idx:step_end_idx + 1])
+            dt = segment_duration / num_points
+            t_temp = np.arange(current_time, current_time + segment_duration, dt)
 
+            # Trim t_temp in case rounding causes mismatch
+            t_temp = t_temp[:num_points]
 
+            time.extend(t_temp)
+            rpm.extend(self.rpm[step_start_idx:step_end_idx + 1])
+            current.extend(self.current[step_start_idx:step_end_idx + 1])
+            motor_duty.extend(self.m_duty[step_start_idx:step_end_idx + 1])
+            temp.extend(self.temp[step_start_idx:step_end_idx + 1])
+            throttle_duty.extend(self.t_duty[step_start_idx:step_end_idx + 1])
+            voltage.extend(self.voltage[step_start_idx:step_end_idx + 1])
+            phase_cur.extend(self.phase_current[step_start_idx:step_end_idx + 1])
+            pow.extend(self.pwr[step_start_idx:step_end_idx + 1])
+
+            current_time += segment_duration
+
+        # Atama
+        self.timestamp = time
         self.rpm = rpm
         self.current = current
         self.m_duty = motor_duty
         self.temp = temp
         self.t_duty = throttle_duty
         self.voltage = voltage
-        self.timestamp = time
         self.phase_current = phase_cur
         self.pwr = pow
 
+        print(f"🛫 Flight sync complete: {len(time)} timestamps across {num_segments} segments.")
+
+
     def find_zero_crossing_flight(self):
-        start_index = []
-        end_index = []
+        self.zero_crossing = []
+        start_index = None
 
         for i in range(1, len(self.timestamp)):
-            if self.t_duty[i] == 0 and self.t_duty[i - 1] != 0:
-                start_index.append(self.timestamp[i])
-            elif self.t_duty[i] != 0 and self.t_duty[i - 1] == 0:
-                end_index.append(self.timestamp[i])
-        self.zero_crossing.append((end_index[-1], start_index[-1]))
+            if self.t_duty[i - 1] == 0 and self.t_duty[i] != 0:
+                start_index = i
+            elif self.t_duty[i - 1] != 0 and self.t_duty[i] == 0 and start_index is not None:
+                end_index = i
+                self.zero_crossing.append((start_index, end_index))
+                start_index = None
+
 
     def combined_step_syncro(self, esc_id, step_duration_sec=35):
         time, rpm, current, motor_duty, temp, throttle_duty, voltage = [], [], [], [], [], [], []
