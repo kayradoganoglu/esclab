@@ -109,13 +109,35 @@ class PostProcess(EscData):
     def find_zero_crossing_flight(self):
         start_index = []
         end_index = []
-
-        for i in range(1, len(self.timestamp)):
-            if self.t_duty[i] == 0 and self.t_duty[i - 1] != 0:
-                start_index.append(self.timestamp[i])
-            elif self.t_duty[i] != 0 and self.t_duty[i - 1] == 0:
-                end_index.append(self.timestamp[i])
-        self.zero_crossing.append((end_index[-1], start_index[-1]))
+        
+        # Get the first significant non-zero section
+        first_non_zero = None
+        last_non_zero = None
+        
+        # Find the first zero crossing after range starts
+        for i in range(len(self.t_duty)):
+            if self.t_duty[i] > 2:
+                # Look for first significant throttle value
+                if first_non_zero is None:
+                    # Found first significant value, now find next zero crossing
+                    first_non_zero = i
+                    # Search forward for next zero
+                    for j in range(i+1, len(self.t_duty)):
+                        if self.t_duty[j] == 0:
+                            first_non_zero = j  # Update to first zero after range
+                            break
+                last_non_zero = i
+        
+        if first_non_zero is not None and last_non_zero is not None:
+            # Get a bit before the first zero crossing
+            range_start = max(0, first_non_zero - 10)
+            # Get a bit after the last significant throttle
+            range_end = min(len(self.t_duty) - 1, last_non_zero + 10)
+            
+            self.zero_crossing = [(range_start, range_end)]
+            print(f"Flight range detected for ESC {self.serial_number}: index {range_start} to {range_end}")
+        else:
+            print(f"Warning: No significant throttle found in the data for ESC {self.serial_number}")
 
     def combined_step_syncro(self, esc_id, step_duration_sec=35):
         time, rpm, current, motor_duty, temp, throttle_duty, voltage = [], [], [], [], [], [], []
