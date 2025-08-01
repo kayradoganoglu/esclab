@@ -123,9 +123,10 @@ class PostProcess(EscData):
                 break
                 
         if start_index is not None and end_index is not None:
-            # Add small buffer before and after
-            range_start = max(0, start_index - 10)
-            range_end = min(len(self.t_duty) - 1, end_index + 10)
+            range_start = max(0, start_index - 5) #:  Add 5 points before
+            range_end = min(len(self.t_duty) - 1, end_index + 5) #: Add 5 points after
+            #range_start = start_index
+            #range_end = end_index
             
             self.zero_crossing = [(range_start, range_end)]
             print(f"Flight range detected for ESC {self.serial_number}: index {range_start} to {range_end}")
