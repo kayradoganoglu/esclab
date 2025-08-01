@@ -283,34 +283,40 @@ class ProcessTool(QDialog):
     def place_zero(self):
         value = self.int_input.value()
         esc = self.active_list[self.input_esc.currentIndex()]
-        if esc == 0:
-            self.esc0.t_duty[value]=0
-            self.console.log(f'Place Zero ESC-0 at Index: {value}')
-        elif esc == 1:
-            self.esc1.t_duty[value]=0
-            self.console.log(f'Place Zero ESC-1 at Index: {value}')
-        elif esc == 2:
-            self.esc2.t_duty[value]=0
-            self.console.log(f'Place Zero ESC-2 at Index: {value}')
-        elif esc == 3:
-            self.esc3.t_duty[value]=0
-            self.console.log(f'Place Zero ESC-3 at Index: {value}')
-        if self.ax0:
+        
+        # Place zero in the selected ESC's data
+        if esc == 0 and self.esc0:
+            self.esc0.t_duty[value] = 0
             self.ax0.clear()
             self.ax0.plot(self.esc0.timestamp, self.esc0.t_duty)
+            self.ax0.set_ylim(-5, max(self.esc0.t_duty)+10)
+            self.ax0.set_title('Esc 0')
             self.canvas.draw()
-        if self.ax1:
+            self.console.log(f'Place Zero ESC-0 at Index: {value}')
+        elif esc == 1 and self.esc1:
+            self.esc1.t_duty[value] = 0
             self.ax1.clear()
             self.ax1.plot(self.esc1.timestamp, self.esc1.t_duty)
+            self.ax1.set_ylim(-5, max(self.esc1.t_duty)+10)
+            self.ax1.set_title('Esc 1')
             self.canvas1.draw()
-        if self.ax2:
+            self.console.log(f'Place Zero ESC-1 at Index: {value}')
+        elif esc == 2 and self.esc2:
+            self.esc2.t_duty[value] = 0
             self.ax2.clear()
             self.ax2.plot(self.esc2.timestamp, self.esc2.t_duty)
+            self.ax2.set_ylim(-5, max(self.esc2.t_duty)+10)
+            self.ax2.set_title('Esc 2')
             self.canvas2.draw()
-        if self.ax3:
+            self.console.log(f'Place Zero ESC-2 at Index: {value}')
+        elif esc == 3 and self.esc3:
+            self.esc3.t_duty[value] = 0
             self.ax3.clear()
             self.ax3.plot(self.esc3.timestamp, self.esc3.t_duty)
+            self.ax3.set_ylim(-5, max(self.esc3.t_duty)+10)
+            self.ax3.set_title('Esc 3')
             self.canvas3.draw()
+            self.console.log(f'Place Zero ESC-3 at Index: {value}')
 
     def check_crop(self):
         non_none_count = sum(1 for i in self.crop_range if i[0] is not None and i[1] is not None)
