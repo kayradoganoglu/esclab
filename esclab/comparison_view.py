@@ -152,7 +152,7 @@ class ComparisonView(QDialog):
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
             self.list_widget = QListWidget()
             self.list_widget.addItems(['Voltage', 'Current', 'Temperature', 'RPM', 'Throttle Duty',
-                                   'Motor Duty','Phase Current','Power','RPM - Throttle'])
+                                   'Motor Duty','Phase Current','Power'])
 
 
         self.smoothing_enabled = False
@@ -877,4 +877,3 @@ class ComparisonView(QDialog):
     def on_smoothing_toggle_clicked(self):
         self.smoothing_enabled = self.smoothing_button.isChecked()
         self.update_plot()
-
