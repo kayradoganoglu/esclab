@@ -10,6 +10,9 @@
 Use command:<br>
 **pip install numpy pandas matplotlib plotly pyqt6 pyqt6-webengine**<br>
 **python -m pip install spicy**<br>
+**python -m pip install reportlab**<br>
+**python -m pip install kaleido**<br>
+
 *After package installation* run **main.py**
 
 **Since the JS Library is taken from the internet, some graphics in the code may not work when not connected to the internet.**
