@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, \
-    QTabWidget, QHBoxLayout, QLabel
+    QTabWidget, QHBoxLayout, QLabel, QMessageBox
 from abstraction import take_values_from_csv
 from combined_view import CombinedView
 from comparison_view import ComparisonView
@@ -16,7 +16,15 @@ from process_tool import ProcessTool
 from save_utility import test_mkdir
 from console_widget import ConsoleWidget
 from PyQt6.QtWidgets import QLineEdit
+from report_dialog import ReportDialog
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+import plotly.express as px
+import tempfile
+import os
+import pandas as pd
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -148,6 +156,11 @@ class MainWindow(QMainWindow):
         combined_view_button.setFixedHeight(60)
         tab_layout.addWidget(combined_view_button)
 
+        generate_report_button = QPushButton("Generate Report", self)
+        generate_report_button.clicked.connect(lambda: self.open_generate_report_window(raw=True))
+        generate_report_button.setFixedHeight(60)
+        tab_layout.addWidget(generate_report_button)
+
         self.buttons_tab.addTab(tab_widget, tab_name)
         self.console.log(f'>{tab_name} Data Tab Loaded')
     def create_tab(self, tab_name, individual_callback, comparison_callback, combined_callback,test_type=None,e0=None,e1=None,e2=None,e3=None):
@@ -174,6 +187,11 @@ class MainWindow(QMainWindow):
         combined_view_button.clicked.connect(combined_callback)
         combined_view_button.setFixedHeight(60)
         tab_layout.addWidget(combined_view_button)
+
+        generate_report_button = QPushButton("Generate Report", self)
+        generate_report_button.clicked.connect(lambda: self.open_generate_report_window(raw=False))
+        generate_report_button.setFixedHeight(60)
+        tab_layout.addWidget(generate_report_button)
 
         self.buttons_tab.addTab(tab_widget, tab_name)
         self.console.log(f'>{tab_name} Data Tab loaded')
@@ -213,6 +231,11 @@ class MainWindow(QMainWindow):
                             lambda: self.open_combined_view_window_flight_test(e0=flight_e0,e1=flight_e1,e2=flight_e2,e3=flight_e3),
                             test_type,flight_e0,flight_e1,flight_e2,flight_e3)
             self.flight_test_tab_created = True
+
+            self.e0_result = flight_e0
+            self.e1_result = flight_e1
+            self.e2_result = flight_e2
+            self.e3_result = flight_e3
 
     def combined_step_test(self,e0=None,e1=None,e2=None,e3=None):
         test_type=1
@@ -412,6 +435,137 @@ class MainWindow(QMainWindow):
     def open_process_tool_window(self):
         dialog = ProcessTool(self)
         dialog.exec()
+
+    def open_generate_report_window(self, raw=True):
+        if raw:
+            e0, e1, e2, e3 = self.esc0_data, self.esc1_data, self.esc2_data, self.esc3_data
+        else:
+            try:
+                e0, e1, e2, e3 = self.e0_result, self.e1_result, self.e2_result, self.e3_result
+            except AttributeError:
+                QMessageBox.warning(self, "Hata", "Post Process verisi bulunamadı.")
+                return
+
+            # Eğer Flight Test sonucu oluştuysa ama değerler None ise yine hata göster
+            if any(esc is None for esc in [e0, e1, e2, e3]):
+                QMessageBox.warning(self, "Hata", "Lütfen bir test çalıştırıp ESC verisi oluşturun.")
+                return
+
+
+        dialog = ReportDialog(
+            post_process=not raw,  # ← raw=False ise bu post process'tir
+            e0=e0, e1=e1, e2=e2, e3=e3
+        )
+
+
+
+        if dialog.exec():
+            selected_attrs = dialog.selected_attributes
+            selected_escs = dialog.selected_escs
+            self.console.log(f"> Selected Attributes: {selected_attrs}")
+            self.console.log(f"> Selected ESCs: {selected_escs}")
+            self.generate_pdf(selected_attrs, selected_escs, raw)
+
+
+            
+
+
+    def generate_pdf(self, selected_attrs, selected_escs, raw=True):
+        self.console.log("Generating PDF...")
+
+        # 🔧 ESC verileri: Raw mı Post Process mi?
+        if raw:
+            esc_sources = [self.esc0_data, self.esc1_data, self.esc2_data, self.esc3_data]
+        else:
+            try:
+                esc_sources = [self.e0_result, self.e1_result, self.e2_result, self.e3_result]
+            except AttributeError:
+                QMessageBox.warning(self, "Hata", "Post Process verisi bulunamadı.")
+                return
+
+        # PDF başlat
+        pdf_path = QFileDialog.getSaveFileName(self, "Save Report As", "", "PDF Files (*.pdf)")[0]
+        if not pdf_path:
+            return
+
+        doc = SimpleDocTemplate(pdf_path, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        attr_mapping = {
+            "eRPM": "e_rpm",
+            "RPM": "rpm",
+            "Throttle Duty": "t_duty",
+            "Motor Duty": "m_duty",
+            "Phase Current": "phase_current",
+            "Power": "pwr",
+            "Status 1": "stat_1",
+            "Status 2": "stat_2",
+            "Voltage": "voltage",
+            "Current": "current",
+            "Temperature": "temp"
+        }
+
+        for attr in selected_attrs:
+            attr_key = attr_mapping.get(attr, attr.lower().replace(" ", "_"))
+
+            elements.append(Paragraph(f"<b>{attr}</b>", styles['Heading2']))
+            elements.append(Spacer(1, 10))
+
+            # Grafik veri toplama
+            data_frames = []
+            for i in selected_escs:
+                esc = esc_sources[i]
+                if not hasattr(esc, attr_key):
+                    continue
+                df = pd.DataFrame({
+                    "Time": esc.timestamp,
+                    attr: getattr(esc, attr_key)
+                })
+                df["ESC"] = f"ESC{i}"
+                data_frames.append(df)
+
+            if not data_frames:
+                continue
+
+            df_combined = pd.concat(data_frames)
+
+            # Grafik çizimi
+            fig = px.line(df_combined, x="Time", y=attr, color="ESC", title=f"{attr} over Time")
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                fig.write_image(tmp.name, width=800, height=400)
+                elements.append(Image(tmp.name, width=500, height=250))
+
+            # Yorumlar
+            comments = []
+            for i in selected_escs:
+                esc = esc_sources[i]
+                try:
+                    values = getattr(esc, attr_key)
+                    times = esc.timestamp
+                    max_v, min_v, mean_v = max(values), min(values), sum(values) / len(values)
+                    max_t = times[values.index(max_v)]
+                    min_t = times[values.index(min_v)]
+
+                    if attr in ["Voltage", "Current", "Temperature"]:
+                        comments.append(f"ESC{i} - Max: {max_v:.2f} at {max_t:.2f}s, Min: {min_v:.2f} at {min_t:.2f}s, Mean: {mean_v:.2f}")
+                    elif attr in ["RPM", "Throttle Duty", "eRPM"]:
+                        comments.append(f"ESC{i} - Mean: {mean_v:.2f}")
+                    elif attr == "Power":
+                        comments.append(f"ESC{i} - Max: {max_v:.2f} at {max_t:.2f}s, Total Power: {sum(values):.2f}")
+                except Exception as e:
+                    comments.append(f"ESC{i} - Error calculating comments: {e}")
+
+            for line in comments:
+                elements.append(Paragraph(line, styles['Normal']))
+            elements.append(Spacer(1, 20))
+
+        doc.build(elements)
+        self.console.log(f"Report Saved")
+
+
+
+
 
 app = QApplication(sys.argv)
 window = MainWindow()
