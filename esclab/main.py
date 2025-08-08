@@ -443,17 +443,17 @@ class MainWindow(QMainWindow):
             try:
                 e0, e1, e2, e3 = self.e0_result, self.e1_result, self.e2_result, self.e3_result
             except AttributeError:
-                QMessageBox.warning(self, "Hata", "Post Process verisi bulunamadı.")
+                QMessageBox.warning(self, "Error", "Post Process data not found.") #Bu Error Post Process Data bulunamadığında gösterilir. Ancak Generate Report butonu zaten Post Process Data varsa aktif olur.
                 return
 
-            # Eğer Flight Test sonucu oluştuysa ama değerler None ise yine hata göster
+            # Eğer Flight Test sonucu oluştuysa ama değerler None ise yine hata göster, Her hangi bir ESC verisi eksikse de bu hata gösterilir. 
             if any(esc is None for esc in [e0, e1, e2, e3]):
-                QMessageBox.warning(self, "Hata", "Lütfen bir test çalıştırıp ESC verisi oluşturun.")
+                QMessageBox.warning(self, "Error", "Please ensure all ESC data is loaded. Maybe some ESC data is missing.")
                 return
 
 
         dialog = ReportDialog(
-            post_process=not raw,  # ← raw=False ise bu post process'tir
+            post_process=not raw,  # Post Process Data. 
             e0=e0, e1=e1, e2=e2, e3=e3
         )
 
@@ -462,8 +462,8 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             selected_attrs = dialog.selected_attributes
             selected_escs = dialog.selected_escs
-            self.console.log(f"> Selected Attributes: {selected_attrs}")
-            self.console.log(f"> Selected ESCs: {selected_escs}")
+            self.console.log(f"> Selected Attributes: {selected_attrs}") # Kullanıcı tarafından seçilen özellikler konsolda gösterilir.
+            self.console.log(f"> Selected ESCs: {selected_escs}") # Kullanıcı tarafından seçilen ESC'ler konsolda gösterilir.
             self.generate_pdf(selected_attrs, selected_escs, raw)
 
 
@@ -480,7 +480,7 @@ class MainWindow(QMainWindow):
             try:
                 esc_sources = [self.e0_result, self.e1_result, self.e2_result, self.e3_result]
             except AttributeError:
-                QMessageBox.warning(self, "Hata", "Post Process verisi bulunamadı.")
+                QMessageBox.warning(self, "Error", "Post Process Data is not found.")
                 return
 
         # PDF başlat
@@ -512,7 +512,7 @@ class MainWindow(QMainWindow):
             elements.append(Paragraph(f"<b>{attr}</b>", styles['Heading2']))
             elements.append(Spacer(1, 10))
 
-            # Grafik veri toplama
+            
             data_frames = []
             for i in selected_escs:
                 esc = esc_sources[i]
@@ -530,13 +530,15 @@ class MainWindow(QMainWindow):
 
             df_combined = pd.concat(data_frames)
 
-            # Grafik çizimi
+            # Grafik oluşturma aynı ComparisonView'deki gibi sağlanıyor. 
             fig = px.line(df_combined, x="Time", y=attr, color="ESC", title=f"{attr} over Time")
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                fig.write_image(tmp.name, width=800, height=400)
+                fig.write_image(tmp.name, width=1200, height=600, scale=2)
+
+                #fig.write_image(tmp.name, width=800, height=400), Düşük Çözünürlüklü hali. 
                 elements.append(Image(tmp.name, width=500, height=250))
 
-            # Yorumlar
+            # Kullanıcı tarafından istenen yorumlar, geliştirilebilir. 
             comments = []
             for i in selected_escs:
                 esc = esc_sources[i]
